@@ -1,0 +1,1 @@
+{"name":"etat-civil-rdc-demo","version":"0.1.0","private":true,"scripts":{"build":"mkdir -p dist && cp *.html *.css *.js vercel.json dist/"}}
