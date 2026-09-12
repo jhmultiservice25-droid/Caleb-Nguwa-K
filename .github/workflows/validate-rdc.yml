@@ -1,0 +1,28 @@
+name: Validate OpenCRVS RDC
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RDC repository
+        uses: actions/checkout@v4
+
+      - name: Check shell scripts
+        run: |
+          bash -n scripts/bootstrap-opencrvs.sh
+          bash -n scripts/deploy-opencrvs-rdc.sh
+
+      - name: Validate required RDC files
+        run: |
+          test -f countryconfig/src/config/rdc.ts
+          test -f countryconfig/src/locations/kinshasa.ts
+          test -f OPENCRVS_UPSTREAM.md
+
+      - name: Verify OpenCRVS upstream is reachable
+        run: git ls-remote https://github.com/opencrvs/opencrvs-core.git refs/heads/develop
