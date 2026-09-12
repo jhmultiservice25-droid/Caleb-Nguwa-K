@@ -1,0 +1,51 @@
+name: Security & production readiness
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Shell syntax validation
+        run: |
+          bash -n deploy/production/bootstrap-server.sh
+          bash -n deploy/production/prepare-runtime.sh
+          bash -n deploy/production/security-check.sh
+          bash -n deploy/production/deploy-online.sh
+
+      - name: Reject committed private keys and obvious secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nE 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' -- .; then
+            echo 'Private key material detected in repository' >&2
+            exit 1
+          fi
+          if git grep -nE '(password|secret|token)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_+/=-]{32,}' -- ':!deploy/production/.env.example' .; then
+            echo 'Possible hard-coded secret detected' >&2
+            exit 1
+          fi
+
+      - name: Prepare secured upstream runtime
+        run: |
+          chmod +x deploy/production/*.sh
+          deploy/production/prepare-runtime.sh
+
+      - name: Verify insecure reverse-proxy flags are absent
+        run: |
+          ! grep -R --line-number -E -- '--api\.insecure=true|--serverstransport\.insecureskipverify=true' .runtime/opencrvs-countryconfig/infrastructure
+
+      - name: Verify production compose exists
+        run: test -f .runtime/opencrvs-countryconfig/infrastructure/docker-compose.production-deploy.yml
