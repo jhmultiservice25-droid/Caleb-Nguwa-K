@@ -12,6 +12,7 @@ window.EtatCivilCloud={
     if(error) throw error; return result;
   },
   async login(email,password){const {data,error}=await ecCloud.auth.signInWithPassword({email,password});if(error) throw error;return data},
+  async resendSignupEmail(email){const {data,error}=await ecCloud.auth.resend({type:'signup',email:String(email||'').trim().toLowerCase()});if(error)throw error;return data},
   async logout(){await ecCloud.auth.signOut()},
   async session(){const {data}=await ecCloud.auth.getSession();return data.session},
   async profile(){
