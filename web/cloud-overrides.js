@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded',()=>{
       const profile=await C.profile();
       if(!profile) throw new Error('Profil introuvable.');
       toast('Connexion réussie.');
-      setTimeout(()=>{location.href=profile.role==='national_admin'?'admin.html':profile.role==='provincial_admin'?'province.html?province='+encodeURIComponent(profile.province||'Kinshasa'):profile.role==='agent'?'agent.html':'citoyen.html'},450);
+      setTimeout(()=>{
+        if(profile.role==='national_admin') location.href='admin.html';
+        else if(profile.role==='provincial_admin') location.href='province.html?province='+encodeURIComponent(profile.province||'Kinshasa');
+        else if(profile.role==='communal_admin') location.href='admin.html';
+        else if(profile.role==='agent') location.href='agent.html';
+        else location.href='citoyen.html';
+      },450);
     }catch(err){toast(err.message||'Échec de connexion.');}
   },true);
 
@@ -22,8 +28,16 @@ document.addEventListener('DOMContentLoaded',()=>{
     const p=Object.fromEntries(new FormData(signup));
     try{
       const result=await C.signup(p);
-      if(result.session){toast('Compte créé.');setTimeout(()=>location.href='citoyen.html',500)}
-      else toast('Compte créé. Vérifiez votre e-mail pour confirmer votre inscription.');
+      if(result.session){
+        const profile=await C.profile();
+        toast('Compte créé.');
+        setTimeout(()=>{
+          if(profile?.role==='national_admin'||profile?.role==='communal_admin') location.href='admin.html';
+          else if(profile?.role==='provincial_admin') location.href='province.html?province='+encodeURIComponent(profile.province||'Kinshasa');
+          else if(profile?.role==='agent') location.href='agent.html';
+          else location.href='citoyen.html';
+        },500)
+      } else toast('Compte créé. Vérifiez votre e-mail pour confirmer votre inscription.');
     }catch(err){toast(err.message||'Création du compte impossible.');}
   },true);
 
@@ -71,9 +85,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       try{
         const [acts,docs]=await Promise.all([C.myCivilRequests(),C.myDocumentRequests()]);
         const status=document.querySelector('[data-citizen-status]');
-        if(status){
-          status.innerHTML=acts.length?acts.slice(0,3).map(r=>`<div style="padding:10px;border-bottom:1px solid #e5edf6"><span class="badge badge-blue">${r.status}</span><br><b>${r.kind.toUpperCase()}</b> · ${r.commune}, ${r.province}<br><small>${new Date(r.created_at).toLocaleString('fr-FR')}</small></div>`).join(''):'<p>Aucune demande d’acte envoyée.</p>';
-        }
+        if(status){status.innerHTML=acts.length?acts.slice(0,3).map(r=>`<div style="padding:10px;border-bottom:1px solid #e5edf6"><span class="badge badge-blue">${r.status}</span><br><b>${r.kind.toUpperCase()}</b> · ${r.commune}, ${r.province}<br><small>${new Date(r.created_at).toLocaleString('fr-FR')}</small></div>`).join(''):'<p>Aucune demande d’acte envoyée.</p>'}
         const holder=document.querySelector('#citizen-documents tbody');
         if(holder){holder.innerHTML=docs.length?docs.map(r=>`<tr><td>${r.id}<br><small>${new Date(r.created_at).toLocaleString('fr-FR')}</small></td><td>${r.document_type}</td><td>${r.province}</td><td>${r.commune}</td><td><span class="badge badge-blue">${r.status}</span></td><td>${r.status==='issued'?'Disponible':'En traitement'}</td></tr>`).join(''):'<tr><td colspan="6">Aucune demande de document.</td></tr>'}
       }catch(err){console.error(err)}
