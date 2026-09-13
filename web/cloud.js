@@ -5,14 +5,20 @@ const ecCloud=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY
 window.EtatCivilCloud={
   client:ecCloud,
   async signup(data){
+    const email=String(data.email||'').trim().toLowerCase();
+    const redirectTo=`${location.origin}/connexion.html?confirmed=1`;
     const {data:result,error}=await ecCloud.auth.signUp({
-      email:data.email,password:data.password,
-      options:{data:{full_name:data.fullname,phone:data.phone,province:data.province||null,commune:data.commune||null}}
+      email,password:data.password,
+      options:{
+        emailRedirectTo:redirectTo,
+        data:{full_name:String(data.fullname||'').trim(),phone:String(data.phone||'').trim(),province:data.province||null,commune:data.commune||null}
+      }
     });
     if(error) throw error; return result;
   },
-  async login(email,password){const {data,error}=await ecCloud.auth.signInWithPassword({email,password});if(error) throw error;return data},
-  async resendSignupEmail(email){const {data,error}=await ecCloud.auth.resend({type:'signup',email:String(email||'').trim().toLowerCase()});if(error)throw error;return data},
+  async login(email,password){const {data,error}=await ecCloud.auth.signInWithPassword({email:String(email||'').trim().toLowerCase(),password});if(error) throw error;return data},
+  async resendSignupEmail(email){const {data,error}=await ecCloud.auth.resend({type:'signup',email:String(email||'').trim().toLowerCase(),options:{emailRedirectTo:`${location.origin}/connexion.html?confirmed=1`}});if(error)throw error;return data},
+  async claimOwnInvitation(){const {data,error}=await ecCloud.rpc('claim_own_admin_invitation');if(error)throw error;return !!data},
   async logout(){await ecCloud.auth.signOut()},
   async session(){const {data}=await ecCloud.auth.getSession();return data.session},
   async profile(){
@@ -47,8 +53,8 @@ window.EtatCivilCloud={
   async listInvitations(){const {data,error}=await ecCloud.from('admin_invitations').select('*').order('created_at',{ascending:false});if(error)throw error;return data||[]},
   async createInvitation(payload){
     const {data:{user},error:uerr}=await ecCloud.auth.getUser();if(uerr||!user)throw new Error('Connexion administrateur requise.');
-    const row={email:String(payload.email||'').trim().toLowerCase(),full_name:String(payload.full_name||'').trim(),role:payload.role,province:payload.province||null,commune:payload.commune||null,created_by:user.id,status:'pending'};
-    const {data,error}=await ecCloud.from('admin_invitations').insert(row).select().single();if(error)throw error;return data;
+    const row={email:String(payload.email||'').trim().toLowerCase(),full_name:String(payload.full_name||'').trim(),role:payload.role,province:payload.province||null,commune:payload.commune||null,created_by:user.id,status:'pending',claimed_at:null};
+    const {data,error}=await ecCloud.from('admin_invitations').upsert(row,{onConflict:'email'}).select().single();if(error)throw error;return data;
   },
   async revokeInvitation(id){const {data,error}=await ecCloud.from('admin_invitations').update({status:'revoked'}).eq('id',id).select().single();if(error)throw error;return data},
   async listProvinces(){const {data,error}=await ecCloud.from('provinces').select('*').order('name');if(error)throw error;return data||[]},
@@ -60,10 +66,7 @@ window.EtatCivilCloud={
     const q=String(query||'').trim().toLowerCase();if(q.length<2)return[];
     const {data,error}=await ecCloud.from('civil_requests').select('id,citizen_id,kind,status,province,commune,created_at,payload').order('created_at',{ascending:false}).limit(500);
     if(error)throw error;
-    return (data||[]).filter(r=>{
-      const p=r.payload||{};const name=`${p.citizenFirstName||''} ${p.citizenLastName||''}`.toLowerCase();const phone=String(p.phone||'').toLowerCase();
-      return name.includes(q)||phone.includes(q)||String(r.id).toLowerCase()===q;
-    }).slice(0,50);
+    return (data||[]).filter(r=>{const p=r.payload||{};const name=`${p.citizenFirstName||''} ${p.citizenLastName||''}`.toLowerCase();const phone=String(p.phone||'').toLowerCase();return name.includes(q)||phone.includes(q)||String(r.id).toLowerCase()===q}).slice(0,50);
   },
   async provinceDetails(name){
     const province=String(name||'').trim();
@@ -71,8 +74,8 @@ window.EtatCivilCloud={
       ecCloud.from('civil_requests').select('id,citizen_id,kind,status,province,commune,created_at,payload').eq('province',province).order('created_at',{ascending:false}).limit(200),
       ecCloud.from('profiles').select('id,full_name,role,province,commune,created_at').eq('province',province).order('created_at',{ascending:false})
     ]);
-    if(rerr)throw rerr;if(perr)throw perr;
-    const rs=requests||[],ps=profiles||[];
-    return {province,requests:rs,profiles:ps,summary:{total:rs.length,births:rs.filter(x=>x.kind==='birth').length,marriages:rs.filter(x=>x.kind==='marriage').length,deaths:rs.filter(x=>x.kind==='death').length,agents:ps.filter(x=>x.role==='agent').length,admins:ps.filter(x=>['provincial_admin','communal_admin'].includes(x.role)).length}};
+    if(rerr)throw rerr;
+    const rs=requests||[],ps=perr?[]:(profiles||[]);
+    return {province,requests:rs,profiles:ps,profilesRestricted:!!perr,summary:{total:rs.length,births:rs.filter(x=>x.kind==='birth').length,marriages:rs.filter(x=>x.kind==='marriage').length,deaths:rs.filter(x=>x.kind==='death').length,agents:ps.filter(x=>x.role==='agent').length,admins:ps.filter(x=>['provincial_admin','communal_admin'].includes(x.role)).length}};
   }
 };
