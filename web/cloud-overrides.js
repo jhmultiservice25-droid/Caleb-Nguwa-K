@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const params=new URLSearchParams(location.search);
   if(params.get('confirmed')==='1' && typeof toast==='function') setTimeout(()=>toast('Adresse e-mail confirmée. Vous pouvez maintenant vous connecter.'),150);
+  if(location.hash.includes('error=')){try{const h=new URLSearchParams(location.hash.slice(1));const d=h.get('error_description');if(d&&typeof toast==='function')setTimeout(()=>toast(decodeURIComponent(d.replace(/\+/g,' '))),250)}catch{}}
 
   const login=document.querySelector('#login-form');
   if(login) login.addEventListener('submit',async e=>{
@@ -41,22 +42,38 @@ document.addEventListener('DOMContentLoaded',()=>{
     e.preventDefault();e.stopImmediatePropagation();
     if(!signup.reportValidity()) return;
     const p=Object.fromEntries(new FormData(signup));
+    const email=String(p.email||'').trim().toLowerCase();
+    const fullname=String(p.fullname||'').trim();
+    const phone=String(p.phone||'').trim();
+    const password=String(p.password||'');
     const submit=signup.querySelector('button[type="submit"]');
     try{
-      if(submit){submit.disabled=true;submit.textContent='Création…'}
-      const result=await C.signup(p);
-      if(result.session){
+      if(!fullname) throw new Error('Veuillez saisir votre nom complet.');
+      if(!phone) throw new Error('Veuillez saisir votre numéro de téléphone.');
+      if(password.length<8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
+      if(submit){submit.disabled=true;submit.textContent='Création du compte…'}
+      const redirectTo=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?`${location.origin}/connexion.html?confirmed=1`:'https://etat-civil-rdc.vercel.app/connexion.html?confirmed=1';
+      const {data,error}=await C.client.auth.signUp({email,password,options:{emailRedirectTo:redirectTo,data:{full_name:fullname,phone}}});
+      if(error) throw error;
+      const loginEmail=document.querySelector('#login-form input[name="username"]');
+      if(loginEmail) loginEmail.value=email;
+      const signupSection=document.querySelector('#signup-section');
+      const loginSection=document.querySelector('#login-section');
+      if(signupSection) signupSection.hidden=true;
+      if(loginSection) loginSection.hidden=false;
+      document.querySelector('#signup-tab')?.classList.remove('active');
+      document.querySelector('#login-tab')?.classList.add('active');
+      if(data.session){
         try{await C.claimOwnInvitation()}catch(err){console.warn('Invitation claim skipped',err)}
         const profile=await C.profile();
-        toast('Compte créé.');
-        setTimeout(()=>routeByProfile(profile),400);
-      } else {
-        toast('Compte créé. Ouvrez l’e-mail de confirmation reçu, puis revenez vous connecter.');
-        const loginEmail=document.querySelector('#login-form input[name="username"]');if(loginEmail)loginEmail.value=String(p.email||'');
+        toast('Compte citoyen créé avec succès.');
+        setTimeout(()=>routeByProfile(profile),500);
+      }else{
+        toast('Compte créé. Consultez votre e-mail pour confirmer votre adresse, puis connectez-vous.');
       }
     }catch(err){
       const msg=String(err?.message||'Création du compte impossible.');
-      if(/already registered|already been registered|user already exists/i.test(msg)) toast('Cette adresse possède déjà un compte. Utilisez Connexion ou réinitialisez le parcours de confirmation.');
+      if(/already registered|already been registered|user already exists/i.test(msg)) toast('Cette adresse possède déjà un compte. Utilisez Connexion ou renvoyez l’e-mail de confirmation.');
       else toast(msg);
     }finally{
       if(submit){submit.disabled=false;submit.textContent='Créer mon compte et continuer'}
