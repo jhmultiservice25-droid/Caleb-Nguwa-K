@@ -1,0 +1,15 @@
+(()=>{const s=document.getElementById('ussd-screen'),i=document.getElementById('ussd-value'),b=document.getElementById('ussd-send');if(!s||!i||!b)return;let step='menu',ctx={};const show=t=>{s.textContent=t;i.value='';i.focus()};function next(v){v=String(v||'').trim();if(step==='menu'){if(v==='1'){step='birth_province';show('NAISSANCE\nEntrez code province 01-26');return}if(v==='2'){step='doc_type';show('DOCUMENT\n1 Copie naissance\n2 Extrait naissance\n3 Copie mariage\n4 Copie deces\n5 Certificat');return}if(v==='3'){step='status_ref';show('SUIVI\nEntrez votre reference USSD');return}if(v==='4'){step='verify_ref';show('VERIFICATION\nEntrez numero du document');return}if(v==='5'){show('AIDE\nUSSD permet naissance, demande document, suivi et verification.');return}show('Choix invalide\n1 Naissance\n2 Document\n3 Suivi\n4 Verification\n5 Aide');return}
+if(step==='birth_province'){ctx.province=v;step='birth_commune';show('Entrez votre commune / territoire');return}
+if(step==='birth_commune'){ctx.commune=v;step='birth_name';show('Nom complet du declarant');return}
+if(step==='birth_name'){ctx.declarant=v;step='birth_child';show("Nom complet de l'enfant");return}
+if(step==='birth_child'){ctx.child=v;step='birth_date';show('Date naissance enfant JJMMAAAA');return}
+if(step==='birth_date'){ctx.date=v;step='birth_confirm';show(`Confirmer naissance\n${ctx.child}\n${ctx.commune}\n1 Oui  2 Non`);return}
+if(step==='birth_confirm'){if(v==='1'){show('Demande recue.\nReference: USSD-TEST-001\nUn agent verifiera identite et pieces.');step='done'}else{show('Demande annulee.');step='done'}return}
+if(step==='doc_type'){ctx.doc=v;step='doc_province';show('Entrez code province 01-26');return}
+if(step==='doc_province'){ctx.province=v;step='doc_commune';show('Entrez votre commune / territoire');return}
+if(step==='doc_commune'){ctx.commune=v;step='doc_act';show("Numero d'acte ou 0 si inconnu");return}
+if(step==='doc_act'){ctx.act=v;step='doc_confirm';show(`Confirmer demande document\n${ctx.commune}\n1 Oui  2 Non`);return}
+if(step==='doc_confirm'){if(v==='1'){show('Demande recue.\nReference: USSD-TEST-002\nNotification SMS apres traitement.');step='done'}else{show('Demande annulee.');step='done'}return}
+if(step==='status_ref'){show(`Reference ${v||'inconnue'}\nStatut: en traitement\nConsultez votre centre si necessaire.`);step='done';return}
+if(step==='verify_ref'){show(`Document ${v||'inconnu'}\nResultat de verification affiche ici apres connexion operateur.`);step='done';return}
+if(step==='done'){step='menu';ctx={};show('ETAT CIVIL RDC\n1 Naissance\n2 Demander document\n3 Suivre demande\n4 Verifier document\n5 Aide')}}b.addEventListener('click',()=>next(i.value));i.addEventListener('keydown',e=>{if(e.key==='Enter')next(i.value)});document.querySelectorAll('.keypad button').forEach(k=>k.addEventListener('click',()=>{i.value+=k.textContent===' #'?'#':k.textContent}))})();
