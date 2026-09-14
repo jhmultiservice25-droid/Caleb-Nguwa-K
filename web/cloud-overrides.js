@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       setTimeout(()=>routeByProfile(profile),350);
     }catch(err){
       const msg=String(err?.message||'Échec de connexion.');
-      if(/email not confirmed/i.test(msg)) toast('Votre adresse e-mail n’est pas encore confirmée. Utilisez le bouton de renvoi ci-dessous.');
+      if(/email not confirmed/i.test(msg)) toast('Votre adresse e-mail n’est pas encore confirmée. Demandez un code à 6 chiffres ci-dessous.');
       else if(/invalid login credentials/i.test(msg)) toast('Adresse e-mail ou mot de passe incorrect.');
       else toast(msg);
     }finally{
@@ -57,7 +57,9 @@ document.addEventListener('DOMContentLoaded',()=>{
       const {data,error}=await C.client.auth.signUp({email,password,options:{emailRedirectTo:redirectTo,data:{full_name:fullname,phone}}});
       if(error) throw error;
       const loginEmail=document.querySelector('#login-form input[name="username"]');
+      const otpEmail=document.querySelector('#otp-email');
       if(loginEmail) loginEmail.value=email;
+      if(otpEmail) otpEmail.value=email;
       const signupSection=document.querySelector('#signup-section');
       const loginSection=document.querySelector('#login-section');
       if(signupSection) signupSection.hidden=true;
@@ -67,14 +69,14 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(data.session){
         try{await C.claimOwnInvitation()}catch(err){console.warn('Invitation claim skipped',err)}
         const profile=await C.profile();
-        toast('Compte citoyen créé avec succès.');
+        toast('Compte créé avec succès.');
         setTimeout(()=>routeByProfile(profile),500);
       }else{
-        toast('Compte créé. Consultez votre e-mail pour confirmer votre adresse, puis connectez-vous.');
+        toast('Compte créé. Consultez votre e-mail, récupérez le code à 6 chiffres puis saisissez-le ici.');
       }
     }catch(err){
       const msg=String(err?.message||'Création du compte impossible.');
-      if(/already registered|already been registered|user already exists/i.test(msg)) toast('Cette adresse possède déjà un compte. Utilisez Connexion ou renvoyez l’e-mail de confirmation.');
+      if(/already registered|already been registered|user already exists/i.test(msg)) toast('Cette adresse possède déjà un compte. Demandez un nouveau code de confirmation dans l’onglet Connexion.');
       else toast(msg);
     }finally{
       if(submit){submit.disabled=false;submit.textContent='Créer mon compte et continuer'}
