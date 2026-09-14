@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const routeByProfile=(profile)=>{
     if(profile?.role==='national_admin') location.href='admin.html';
+    else if((profile?.role==='agent'||profile?.role==='communal_admin') && profile?.province==='Kinshasa' && profile?.commune==='Kasa-Vubu') location.href='commune-kasavubu.html';
     else if(profile?.role==='provincial_admin') location.href='province.html?province='+encodeURIComponent(profile.province||'Kinshasa');
     else if(profile?.role==='communal_admin') location.href='admin.html';
     else if(profile?.role==='agent') location.href='agent.html';
