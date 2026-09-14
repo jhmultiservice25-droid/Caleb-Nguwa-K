@@ -9,5 +9,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.querySelectorAll('[data-admin-role]').forEach(el=>el.textContent=p.role==='national_admin'?'Super Admin national':p.role==='provincial_admin'?'Admin provincial':'Admin communal');
     document.querySelectorAll('[data-admin-scope]').forEach(el=>el.textContent=p.role==='national_admin'?'Toute la RDC':p.commune?`${p.commune} · ${p.province}`:(p.province||''));
     document.querySelectorAll('[data-logout]').forEach(btn=>btn.addEventListener('click',async e=>{e.preventDefault();await C.logout();location.href='connexion.html'}));
+    if(p.role==='national_admin'&&!document.querySelector('script[src="national-registry.js"]')){
+      const s=document.createElement('script');s.src='national-registry.js';document.body.appendChild(s);
+    }
   }catch(e){console.error(e);location.href='connexion.html'}
 });
