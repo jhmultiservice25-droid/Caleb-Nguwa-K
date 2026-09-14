@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded',async()=>{
+async function initNationalPilotRegistry(){
   const C=window.EtatCivilCloud;if(!C)return;
   let me;try{me=await C.profile()}catch{return}
   if(!me||me.role!=='national_admin')return;
@@ -18,4 +18,5 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(!rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=5;td.textContent='Aucun acte enregistré pour Kasa-Vubu.';tr.appendChild(td);body.appendChild(tr);return}
     rows.slice(0,20).forEach(r=>{const tr=document.createElement('tr');[r.act_number,labels[r.event_type]||r.event_type,new Date(r.event_date+'T00:00:00').toLocaleDateString('fr-FR'),r.subject_label,new Date(r.created_at).toLocaleString('fr-FR')].forEach(v=>{const td=document.createElement('td');td.textContent=String(v??'');tr.appendChild(td)});body.appendChild(tr)});
   }catch(e){document.getElementById('nat-ksv-records').innerHTML='<tr><td colspan="5">Chargement du registre pilote impossible.</td></tr>'}
-});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initNationalPilotRegistry);else initNationalPilotRegistry();
